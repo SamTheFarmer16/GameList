@@ -1,3 +1,4 @@
+dotenv
 Flask
 Flask-Session
 pytz
