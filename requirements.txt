@@ -3,4 +3,3 @@ Flask
 Flask-Session
 pytz
 requests
-sqlalchemy

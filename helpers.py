@@ -51,4 +51,4 @@ def steam(steam_id):
         print(f"Data parsing error: {e}")
     return None
 
-"""http://media.steampowered.com/steamcommunity/public/images/apps/{appid}/{hash}.jpg"""
+"""for getting a picture of the logo http://media.steampowered.com/steamcommunity/public/images/apps/{appid}/{hash}.jpg"""
