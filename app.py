@@ -118,5 +118,24 @@ def index():
 @app.route("/profile")
 @login_required
 def settings():
+    """Have user input steadID64"""
 
-    return render_template("index.html")
+    if request.method == "POST":
+        steam_id64 = request.form.get("steam_id64")
+        min_range = 76561197960265728
+        max_range = 76561198166386687
+
+    if not steam_id64:
+        return error("must provide steamID", 400)
+    if len(steam_id64) != 17:
+        return error("invalid steamID", 400)
+    if not min_range <= int(steam_id64) <= max_range:
+        return error("invalid steamID", 400)
+    else:
+        game_library = steam(steam_id64)
+        if game_library is None:
+            return error("Failed to retrieve game library", 500)
+        
+
+    
+    return render_template("profle.html")
