@@ -59,8 +59,8 @@ def login():
 
         # Redirect user to home page
         return redirect("/")
-
-     return render_template("login.html")
+      
+    return render_template("login.html")
 
 @app.route("/logout")
 def logout():
@@ -110,6 +110,12 @@ def register():
     return render_template("register.html")
 
 @app.route("/")
+@login_required
+def index():
+
+    return error("TODO", 400)
+
+@app.route("settings")
 @login_required
 def index():
 
