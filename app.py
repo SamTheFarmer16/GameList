@@ -122,43 +122,70 @@ def index():
 
             cur.execute("SELECT appid, icon_img, gamename, platform, status, multiplayer, coop, genre, playtime, length FROM gamelist WHERE user_id = ?", (user_id, ))
             gamelist = cur.fetchall()
+
             return render_template("index.html", gamelist=gamelist)
 
 @app.route("/profile", methods=["GET", "POST"])
 @login_required
 def profile():
-    """Have user input steadID64"""
+    """Allow user to input SteadID64 and update their gamelist"""
 
     if request.method == "POST":
         steam_id64 = request.form.get("steam_id64")
 
         if not steam_id64:
             return error("must provide steamID", 400)
-        if len(steam_id64) != 17:
+        if len(steam_id64) != 17 or not steam_id64.isdigit():
             return error("invalid steamID", 400)
-        else:
-            game_library = steam(steam_id64)
-            if game_library is None:
-                return error("Failed to retrieve game library", 500)
+        
+        user_id = session["user_id"]
+
+        with sqlite3.connect("gamelist.db") as con:
+            con.row_factory = sqlite3.Row
+            cur = con.cursor()
+
+            # Check if user exists
+            cur.execute("SELECT steam_id FROM users WHERE id = ?", (user_id, ))
+            result = cur.fetchone()
+            current_steam_id = result["steam_id"] if result else None
+
+            if steam_id64 == current_steam_id:
+                return error("SteamID unchanged", 400)
+                
+                
             else:
-                with sqlite3.connect("gamelist.db") as con:
-                    cur = con.cursor()
-
-                    user_id = session["user_id"]
-                    game_count = game_library["game_count"]
-
-                    cur.execute("UPDATE users SET game_count = ? WHERE id = ?", (game_count, user_id, ))
-
-                    for game in game_library["games"]:
+                game_library = steam(steam_id64)
+                if game_library is None:
+                    return error("Failed to retrieve game library", 500)
+                else:
+                        game_data = [
+                                    (
+                                        user_id,
+                                        game["appid"],
+                                        game["img_icon_url"],
+                                        game["name"],
+                                        "Steam",
+                                        game["playtime_forever"]
+                                    )
+                                    for game in game_library["games"]
+                                ]
                         
-                        appid = game["appid"]
-                        icon_img = game["img_icon_url"]
-                        gamename = game["name"]
-                        platform = "Steam"
-                        playtime = game["playtime_forever"]
-                        cur.execute("INSERT INTO gamelist (user_id, appid, icon_img, gamename, platform, playtime) VALUES (?, ?, ?, ?, ?, ?)", (user_id, appid, icon_img, 
-                        gamename, platform, playtime, ))
+                        cur.executemany("""
+                            INSERT INTO gamelist (user_id, appid, icon_img, gamename, platform, playtime)
+                            VALUES (?, ?, ?, ?, ?, ?)
+                            ON CONFLICT(user_id, appid) DO UPDATE SET 
+                                icon_img = excluded.icon_img, 
+                                playtime = CASE 
+                                    WHEN excluded.playtime > gamelist.playtime THEN excluded.playtime
+                                        ELSE gamelist.playtime
+                                        END
+                        """, game_data)
+                        con.commit()
 
-                    con.commit()
+                        cur.execute("SELECT COUNT(*) FROM gamelist WHERE user_id = ?;", (user_id, ))
+                        game_count = cur.fetchone()[0]
+
+                        cur.execute("UPDATE users SET game_count = ? WHERE id = ?", (game_count, user_id, ))
+                        con.commit()
 
     return render_template("profile.html")
