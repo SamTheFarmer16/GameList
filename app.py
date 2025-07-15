@@ -109,33 +109,56 @@ def register():
 
     return render_template("register.html")
 
-@app.route("/")
+@app.route("/", methods=["GET", "POST"])
 @login_required
 def index():
 
-    return render_template("index.html")
+    if request.method == "GET":
+        with sqlite3.connect("gamelist.db") as con:
+            con.row_factory = sqlite3.Row
+            cur = con.cursor()
 
-@app.route("/profile")
+            user_id = session["user_id"]
+
+            cur.execute("SELECT appid, icon_img, gamename, platform, status, multiplayer, coop, genre, playtime, length FROM gamelist WHERE user_id = ?", (user_id, ))
+            gamelist = cur.fetchall()
+            return render_template("index.html", gamelist=gamelist)
+
+@app.route("/profile", methods=["GET", "POST"])
 @login_required
-def settings():
+def profile():
     """Have user input steadID64"""
 
     if request.method == "POST":
         steam_id64 = request.form.get("steam_id64")
-        min_range = 76561197960265728
-        max_range = 76561198166386687
 
-    if not steam_id64:
-        return error("must provide steamID", 400)
-    if len(steam_id64) != 17:
-        return error("invalid steamID", 400)
-    if not min_range <= int(steam_id64) <= max_range:
-        return error("invalid steamID", 400)
-    else:
-        game_library = steam(steam_id64)
-        if game_library is None:
-            return error("Failed to retrieve game library", 500)
-        
+        if not steam_id64:
+            return error("must provide steamID", 400)
+        if len(steam_id64) != 17:
+            return error("invalid steamID", 400)
+        else:
+            game_library = steam(steam_id64)
+            if game_library is None:
+                return error("Failed to retrieve game library", 500)
+            else:
+                with sqlite3.connect("gamelist.db") as con:
+                    cur = con.cursor()
 
-    
-    return render_template("profle.html")
+                    user_id = session["user_id"]
+                    game_count = game_library["game_count"]
+
+                    cur.execute("UPDATE users SET game_count = ? WHERE id = ?", (game_count, user_id, ))
+
+                    for game in game_library["games"]:
+                        
+                        appid = game["appid"]
+                        icon_img = game["img_icon_url"]
+                        gamename = game["name"]
+                        platform = "Steam"
+                        playtime = game["playtime_forever"]
+                        cur.execute("INSERT INTO gamelist (user_id, appid, icon_img, gamename, platform, playtime) VALUES (?, ?, ?, ?, ?, ?)", (user_id, appid, icon_img, 
+                        gamename, platform, playtime, ))
+
+                    con.commit()
+
+    return render_template("profile.html")

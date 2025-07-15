@@ -1,0 +1,41 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Home
+{% endblock %}
+
+{% block main %}
+<table>
+    <thead>
+        <tr>
+            <th>Icon</th>
+            <th>AppID</th>
+            <th>Name</th>
+            <th>Platform</th>
+            <th>Status</th>
+            <th>Multiplayer?</th>
+            <th>Coop?</th>
+            <th>Genre</th>
+            <th>Playtime</th>
+            <th>Length</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for game in gamelist %}
+        <tr>
+            <td><img src=http://media.steampowered.com/steamcommunity/public/images/apps/{{ game.appid }}/{{ game.icon_img }}.jpg></td>
+            <td>{{ game.appid }}</td>
+            <td>{{ game.gamename }}</td>
+            <td>{{ game.platform }}</td>
+            <td>{{ game.status }}</td>
+            <td>{{ game.multiplayer }}</td>
+            <td>{{ game.coop }}</td>
+            <td>{{ game.genre }}</td>
+            <td>{{ game.playtime }}</td>
+            <td>{{ game.length }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}
