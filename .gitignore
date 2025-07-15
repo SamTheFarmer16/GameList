@@ -1,1 +1,5 @@
+.flaskenv
 setup.env
+**/__pycache__/
+**/.venv
+**/flask_session
