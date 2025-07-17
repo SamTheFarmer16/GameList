@@ -7,7 +7,7 @@ from flask import Flask, flash, redirect, render_template, request, session
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from helpers import error, login_required, steam
+from helpers import error,is_valid_steamid64, login_required, steam
 
 # Configure application
 app = Flask(__name__)
@@ -137,6 +137,8 @@ def profile():
             return error("must provide steamID", 400)
         if len(steam_id64) != 17 or not steam_id64.isdigit():
             return error("invalid steamID", 400)
+        if is_valid_steamid64(steam_id64) == False:
+            return error("Invalid SteamID", 400)
         
         user_id = session["user_id"]
 
@@ -148,9 +150,16 @@ def profile():
             cur.execute("SELECT steam_id FROM users WHERE id = ?", (user_id, ))
             result = cur.fetchone()
             current_steam_id = result["steam_id"] if result else None
+                if current_steam_id is None:
+                    # Insert SteamID into DB and pull games using  SteamID
 
-            if steam_id64 == current_steam_id:
-                return error("SteamID unchanged", 400)
+                else:
+                    if steam_id64 == current_steam_id:
+                        return error("SteamID unchanged", 400)
+                    else:
+                        # Delist games the user currently has from steam
+
+                        # Add new games to list and update current total count
                 
                 
             else:
@@ -182,9 +191,11 @@ def profile():
                         """, game_data)
                         con.commit()
 
+                        # Grab current count of games
                         cur.execute("SELECT COUNT(*) FROM gamelist WHERE user_id = ?;", (user_id, ))
                         game_count = cur.fetchone()[0]
 
+                        # Update total game count
                         cur.execute("UPDATE users SET game_count = ? WHERE id = ?", (game_count, user_id, ))
                         con.commit()
 

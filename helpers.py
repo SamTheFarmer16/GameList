@@ -14,6 +14,22 @@ def error(message, code=400):
 
     return render_template("error.hmtl", message, code)
 
+def is_valid_steamid64(steamid64):
+    """Checks if steamid64 is valid."""
+    
+    try:
+        sid = int(steamid64)
+    except ValueError:
+        return False
+    
+    Lower_limit = 76561197960265728
+    if sid < Lower_limit:
+        return False
+    
+    if not str(sid).startswith("7656119"):
+        return False
+    
+    return True
 
 def login_required(f):
     """

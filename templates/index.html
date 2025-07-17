@@ -9,7 +9,6 @@
     <thead>
         <tr>
             <th>Icon</th>
-            <th>AppID</th>
             <th>Name</th>
             <th>Platform</th>
             <th>Status</th>
@@ -24,7 +23,6 @@
         {% for game in gamelist %}
         <tr>
             <td><img src=http://media.steampowered.com/steamcommunity/public/images/apps/{{ game.appid }}/{{ game.icon_img }}.jpg></td>
-            <td>{{ game.appid }}</td>
             <td>{{ game.gamename }}</td>
             <td>{{ game.platform }}</td>
             <td>{{ game.status }}</td>
