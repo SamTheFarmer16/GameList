@@ -68,15 +68,22 @@ def steam(steam_id):
         print(f"Data parsing error: {e}")
     return None
 
+"""for getting a picture of the logo http://media.steampowered.com/steamcommunity/public/images/apps/{appid}/{hash}.jpg"""
+
 def library_update(steam_id64, user_id ):
     """ Pulls data from Steam API and adds it to DB"""
-    game_library = steam({steam_id64})
+
+    game_library = steam(steam_id64)
     if game_library is None:
         return error("Failed to retrieve game library", 500)
     else:
+        with sqlite3.connect("gamelist.db") as con:
+            con.row_factory = sqlite3.Row
+            cur = con.cursor()
+
             game_data = [
                         (
-                            {user_id},
+                            user_id,
                             game["appid"],
                             game["img_icon_url"],
                             game["name"],
@@ -99,11 +106,9 @@ def library_update(steam_id64, user_id ):
             con.commit()
 
             # Grab current count of games
-            cur.execute("SELECT COUNT(*) FROM gamelist WHERE user_id = ? AND listed = ?", ({user_id}, 1, ))
+            cur.execute("SELECT COUNT(*) FROM gamelist WHERE user_id = ? AND listed = ?", (user_id, 1, ))
             game_count = cur.fetchone()[0]
 
             # Update total game count
-            cur.execute("UPDATE users SET game_count = ? WHERE id = ?", (game_count, {user_id}, ))
+            cur.execute("UPDATE users SET game_count = ? WHERE id = ?", (game_count, user_id, ))
             con.commit()
-
-"""for getting a picture of the logo http://media.steampowered.com/steamcommunity/public/images/apps/{appid}/{hash}.jpg"""
