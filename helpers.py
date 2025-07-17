@@ -1,5 +1,6 @@
 import os
 import requests
+import sqlite3
 
 from dotenv import load_dotenv
 from flask import redirect, render_template, session
@@ -16,7 +17,7 @@ def error(message, code=400):
 
 def is_valid_steamid64(steamid64):
     """Checks if steamid64 is valid."""
-    
+
     try:
         sid = int(steamid64)
     except ValueError:
@@ -66,5 +67,43 @@ def steam(steam_id):
     except (KeyError, ValueError) as e:
         print(f"Data parsing error: {e}")
     return None
+
+def library_update(steam_id64, user_id ):
+    """ Pulls data from Steam API and adds it to DB"""
+    game_library = steam({steam_id64})
+    if game_library is None:
+        return error("Failed to retrieve game library", 500)
+    else:
+            game_data = [
+                        (
+                            {user_id},
+                            game["appid"],
+                            game["img_icon_url"],
+                            game["name"],
+                            "Steam",
+                            game["playtime_forever"]
+                        )
+                        for game in game_library["games"]
+                    ]
+            
+            cur.executemany("""
+                INSERT INTO gamelist (user_id, appid, icon_img, gamename, platform, playtime)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(user_id, appid) DO UPDATE SET 
+                    icon_img = excluded.icon_img, 
+                    playtime = CASE 
+                        WHEN excluded.playtime > gamelist.playtime THEN excluded.playtime
+                            ELSE gamelist.playtime
+                            END
+            """, game_data)
+            con.commit()
+
+            # Grab current count of games
+            cur.execute("SELECT COUNT(*) FROM gamelist WHERE user_id = ? AND listed = ?", ({user_id}, 1, ))
+            game_count = cur.fetchone()[0]
+
+            # Update total game count
+            cur.execute("UPDATE users SET game_count = ? WHERE id = ?", (game_count, {user_id}, ))
+            con.commit()
 
 """for getting a picture of the logo http://media.steampowered.com/steamcommunity/public/images/apps/{appid}/{hash}.jpg"""

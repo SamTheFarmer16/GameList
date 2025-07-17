@@ -2,12 +2,12 @@ import os
 import sqlite3
 import sys
 
-from datetime import datetime
+from datetime import date
 from flask import Flask, flash, redirect, render_template, request, session
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from helpers import error,is_valid_steamid64, login_required, steam
+from helpers import error, is_valid_steamid64, library_update, login_required, steam
 
 # Configure application
 app = Flask(__name__)
@@ -120,7 +120,7 @@ def index():
 
             user_id = session["user_id"]
 
-            cur.execute("SELECT appid, icon_img, gamename, platform, status, multiplayer, coop, genre, playtime, length FROM gamelist WHERE user_id = ?", (user_id, ))
+            cur.execute("SELECT appid, icon_img, gamename, platform, status, multiplayer, coop, genre, playtime, length FROM gamelist WHERE user_id = ? AND listed = ?", (user_id, 1, ))
             gamelist = cur.fetchall()
 
             return render_template("index.html", gamelist=gamelist)
@@ -150,53 +150,22 @@ def profile():
             cur.execute("SELECT steam_id FROM users WHERE id = ?", (user_id, ))
             result = cur.fetchone()
             current_steam_id = result["steam_id"] if result else None
-                if current_steam_id is None:
-                    # Insert SteamID into DB and pull games using  SteamID
 
-                else:
-                    if steam_id64 == current_steam_id:
-                        return error("SteamID unchanged", 400)
-                    else:
-                        # Delist games the user currently has from steam
+            if current_steam_id is None:
+                # Insert SteamID into DB
+                cur.execute("UPDATE users SET steam_id = ? WHERE id = ?" , (steam_id64, user_id, ))
+                con.commit()
 
-                        # Add new games to list and update current total count
-                
-                
+                # Add new games to list and update current total count
+                library_update(steam_id64, user_id)
+
             else:
-                game_library = steam(steam_id64)
-                if game_library is None:
-                    return error("Failed to retrieve game library", 500)
+                if steam_id64 == current_steam_id:
+                    return error("SteamID unchanged", 400)
                 else:
-                        game_data = [
-                                    (
-                                        user_id,
-                                        game["appid"],
-                                        game["img_icon_url"],
-                                        game["name"],
-                                        "Steam",
-                                        game["playtime_forever"]
-                                    )
-                                    for game in game_library["games"]
-                                ]
-                        
-                        cur.executemany("""
-                            INSERT INTO gamelist (user_id, appid, icon_img, gamename, platform, playtime)
-                            VALUES (?, ?, ?, ?, ?, ?)
-                            ON CONFLICT(user_id, appid) DO UPDATE SET 
-                                icon_img = excluded.icon_img, 
-                                playtime = CASE 
-                                    WHEN excluded.playtime > gamelist.playtime THEN excluded.playtime
-                                        ELSE gamelist.playtime
-                                        END
-                        """, game_data)
-                        con.commit()
-
-                        # Grab current count of games
-                        cur.execute("SELECT COUNT(*) FROM gamelist WHERE user_id = ?;", (user_id, ))
-                        game_count = cur.fetchone()[0]
-
-                        # Update total game count
-                        cur.execute("UPDATE users SET game_count = ? WHERE id = ?", (game_count, user_id, ))
-                        con.commit()
+                    # Delist games the user currently has from steam and add date
+                    cur.execute("UPDATE gamelist SET listed = ?, delist_date = ? WHERE user_id = ?", (0, today, user_id))
+                    # Add new games to list and update current total count
+                    library_update(steam_id64, user_id)
 
     return render_template("profile.html")
