@@ -178,8 +178,10 @@ def profile():
                         return error("SteamID unchanged", 400)
                     else:
                         today = date.today().isoformat()
+                        # update SteamID
+                        cur.execute("UPDATE users SET steam_id = ?", (steam_id64, ))
                         # Delist games the user currently has from steam and add date
-                        cur.execute("UPDATE gamelist SET listed = ?, delist_date = ? WHERE user_id = ?", (0, today, user_id))
+                        cur.execute("UPDATE gamelist SET listed = ?, delist_date = ? WHERE user_id = ?", (0, today, user_id, ))
                         con.commit()
 
                         # Add new games to list and update current total count
