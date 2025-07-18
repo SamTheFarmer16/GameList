@@ -145,32 +145,35 @@ def profile():
     user_id = session["user_id"]
 
     with sqlite3.connect("gamelist.db") as con:
-            con.row_factory = sqlite3.Row
-            cur = con.cursor()
+        con.row_factory = sqlite3.Row
+        cur = con.cursor()
 
-            # Check if user has a steamID
-            cur.execute("SELECT steam_id FROM users WHERE id = ?", (user_id, ))
-            result = cur.fetchone()
-            current_steam_id = result["steam_id"] if result else None
+        # Check if user has a steamID
+        cur.execute("SELECT steam_id FROM users WHERE id = ?", (user_id, ))
+        result = cur.fetchone()
+        current_steam_id = result["steam_id"] if result else None
 
-            if request.method == "POST":
-                steam_id64 = request.form.get("steam_id64")
+        if request.method == "POST":
+            action = request.form.get("action")
+            steam_id64 = request.form.get("steam_id64")
 
+            if action == "add" or action == "update":
                 # Check if SteamID is valid
                 if not steam_id64:
                     return error("must provide steamID", 400)
                 if is_valid_steamid64(steam_id64) == False:
                     return error("Invalid SteamID", 400)
                 
-                # Insert SteamID into DB
-                if current_steam_id is None:
-                    cur.execute("UPDATE users SET steam_id = ? WHERE id = ?" , (steam_id64, user_id, ))
-                    con.commit()
+                if action == "add":
+                    # Insert SteamID into DB
+                    if current_steam_id is None:
+                        cur.execute("UPDATE users SET steam_id = ? WHERE id = ?" , (steam_id64, user_id, ))
+                        con.commit()
 
-                    # Add new games to list and update current total count
-                    library_update(steam_id64, user_id)
+                        # Add new games to list and update current total count
+                        library_update(steam_id64, user_id)
 
-                else:
+                elif action == "update":
                     if steam_id64 == current_steam_id:
                         return error("SteamID unchanged", 400)
                     else:
@@ -181,5 +184,14 @@ def profile():
 
                         # Add new games to list and update current total count
                         library_update(steam_id64, user_id)
+
+                elif action == "undo":
+                    return 
+                elif action == "change_password":
+                    return
+                elif action == "delete_library":
+                    return
+                elif action == "delete_account":
+                    return
 
     return render_template("profile.html", current_steam_id=current_steam_id)
