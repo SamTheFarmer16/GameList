@@ -18,6 +18,8 @@ def error(message, code=400):
 def is_valid_steamid64(steamid64):
     """Checks if steamid64 is valid."""
 
+    if len(steamid64) != 17 or not steamid64.isdigit():
+            return False
     try:
         sid = int(steamid64)
     except ValueError:

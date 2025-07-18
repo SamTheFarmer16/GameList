@@ -5,10 +5,50 @@
 {% endblock %}
 
 {% block main %}
-    <form action="/profile" method="post">
-        <div class="mb-3">
-            <input autocomplete="off" autofocus class="form-control mx-auto w-auto" name="steam_id64" placeholder="SteamID64" type="text">
-        </div>
-        <button class="btn btn-primary" type="submit">Submit</button>
-    </form>
+    {% if current_steam_id %}
+        <h2>Current Steam ID: {{ current_steam_id }}</h2>
+            <form action="/profile" method="POST" onsubmit="return confirm('Add Steam games to Game Library and remove old SteamIDs games? Will be able to get them back within 30 days');">
+                <div class="mb-3">
+                    <input autocomplete="off" autofocus class="form-control mx-auto w-auto" name="steam_id64" placeholder="Change SteamID" type="text">
+                </div>
+                <button type="submit" name="action" value="add">Update SteamID</button>
+            </form>
+            <button id="undoButton">Undo</button>
+                <div id="undoModal" style="display: none; position: fixed; top: 20%; left: 35%; background: white; border: 1px solid #ccc; padding: 20px; z-index: 1000;">
+                    <form method="POST" action="/profile">
+                        <input type="hidden" name="action" value="undo">
+                        <label for="steam_id">SteamID to Restore:</label>
+                        <input type="text" name="steam_id64" required><br><br>
+                        
+                        <button type="submit">Submit</button>
+                        <button type="button" onclick="closeModal()">Cancel</button>
+                    </form>
+                </div>
+            <form action="/profile" method="POST" onsubmit="return confirm('Add old SteamID games back to Game Library? This will remove the games tied to the current SteamID');">
+                <div class="mb-3">
+                    <input autocomplete="off" autofocus class="form-control mx-auto w-auto" name="steam_id64" placeholder="Change SteamID" type="text">
+                </div>
+                <button type="submit" name="action" value="undo">Update SteamID</button>
+            </form>
+    {% else %}
+            <form action="/profile" method="POST" onsubmit="return confirm('Add Steam games to Game Library?');">
+                <div class="mb-3">
+                    <input autocomplete="off" autofocus class="form-control mx-auto w-auto" name="steam_id64" placeholder="Enter SteamID64" type="text">
+                </div>
+                <button type="submit" name="action" value="add">Add SteamID</button>
+            </form>
+    {% endif %}
+<script>
+  const modal = document.getElementById('undoModal');
+  const undoBtn = document.getElementById('undoButton');
+
+  undoBtn.addEventListener('click', () => {
+    modal.style.display = 'block';
+  });
+
+  function closeModal() {
+    modal.style.display = 'none';
+  }
+</script>
 {% endblock %}
+
