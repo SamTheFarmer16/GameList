@@ -86,6 +86,7 @@ def library_update(steam_id64, user_id ):
             game_data = [
                         (
                             user_id,
+                            steam_id64,
                             game["appid"],
                             game["img_icon_url"],
                             game["name"],
@@ -96,8 +97,8 @@ def library_update(steam_id64, user_id ):
                     ]
             
             cur.executemany("""
-                INSERT INTO gamelist (user_id, appid, icon_img, gamename, platform, playtime)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO gamelist (user_id, steam_id, appid, icon_img, gamename, platform, playtime)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(user_id, appid) DO UPDATE SET 
                     icon_img = excluded.icon_img, 
                     playtime = CASE 

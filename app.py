@@ -27,6 +27,7 @@ app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
+today = date.today().isoformat()
 
 @app.after_request
 def after_request(response):
@@ -157,7 +158,7 @@ def profile():
             action = request.form.get("action")
             steam_id64 = request.form.get("steam_id64")
 
-            if action == "add" or action == "update":
+            if action == "add" or action == "update" or action == "undo":
                 # Check if SteamID is valid
                 if not steam_id64:
                     return error("must provide steamID", 400)
@@ -167,7 +168,7 @@ def profile():
                 if action == "add":
                     # Insert SteamID into DB
                     if current_steam_id is None:
-                        cur.execute("UPDATE users SET steam_id = ? WHERE id = ?" , (steam_id64, user_id, ))
+                        cur.execute("UPDATE users SET steam_id = ? WHERE id = ?", (steam_id64, user_id, ))
                         con.commit()
 
                         # Add new games to list and update current total count
@@ -177,18 +178,73 @@ def profile():
                     if steam_id64 == current_steam_id:
                         return error("SteamID unchanged", 400)
                     else:
-                        today = date.today().isoformat()
                         # update SteamID
                         cur.execute("UPDATE users SET steam_id = ?", (steam_id64, ))
                         # Delist games the user currently has from steam and add date
-                        cur.execute("UPDATE gamelist SET listed = ?, delist_date = ? WHERE user_id = ?", (0, today, user_id, ))
+                        cur.execute("UPDATE gamelist SET listed = ?, delist_date = ? WHERE user_id = ? AND platform = ?", (0, today, user_id, "Steam" ))
                         con.commit()
 
                         # Add new games to list and update current total count
                         library_update(steam_id64, user_id)
 
                 elif action == "undo":
-                    return 
+
+                    game_library = steam(steam_id64)
+                    if game_library is None:
+                        return error("Failed to retrieve game library", 500)
+                    
+                    game_data = [
+                        (
+                            user_id,
+                            steam_id64,
+                            game["appid"],
+                            game["img_icon_url"],
+                            game["name"],
+                            "Steam",
+                            game["playtime_forever"]
+                        )
+                        for game in game_library["games"]
+                    ]
+
+                    # Relist games from users library
+                    cur.executemany(
+                        "UPDATE gamelist SET listed = ?, delist_date = ? WHERE appid = ? AND user_id = ? AND steam_id = ?", 
+                        [
+                            (1, None, appid, user_id, steam_id64)
+                            for (_, _, appid, _, _, _, _) in game_data
+                        ]
+                    )
+                    con.commit()
+                    
+                    # Add any new games and update data for all games in library
+                    cur.executemany("""
+                    INSERT INTO gamelist (user_id, steam_id, appid, icon_img, gamename, platform, playtime)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(user_id, appid) DO UPDATE SET 
+                        icon_img = excluded.icon_img, 
+                        playtime = CASE 
+                            WHEN excluded.playtime > gamelist.playtime THEN excluded.playtime
+                                ELSE gamelist.playtime
+                                END
+                    """, game_data)
+                    con.commit()
+
+                    # Delist games that have the old steamid and add date
+                    cur.execute("UPDATE gamelist SET listed = ?, delist_date = ? WHERE user_id = ? AND platform = ? AND steam_id = ?", (0, today, user_id, "Steam", current_steam_id, ))
+                    con.commit()
+
+                    # Grab current count of games
+                    cur.execute("SELECT COUNT(*) FROM gamelist WHERE user_id = ? AND listed = ?", (user_id, 1, ))
+                    game_count = cur.fetchone()[0]
+
+                    # Update total game count
+                    cur.execute("UPDATE users SET game_count = ? WHERE id = ?", (game_count, user_id, ))
+                    con.commit()
+
+                    # Update current steam_id
+                    cur.execute("UPDATE users SET steam_id = ? WHERE id = ?", (steam_id64, user_id, ))
+                    con.commit()
+
                 elif action == "change_password":
                     return
                 elif action == "delete_library":
