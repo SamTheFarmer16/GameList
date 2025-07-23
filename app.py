@@ -245,11 +245,37 @@ def profile():
                     cur.execute("UPDATE users SET steam_id = ? WHERE id = ?", (steam_id64, user_id, ))
                     con.commit()
 
-                elif action == "change_password":
-                    return
-                elif action == "delete_library":
-                    return
-                elif action == "delete_account":
-                    return
+            elif action == "change_password":
+                
+                password = request.form.get("new_password", "")
+                confirmation = request.form.get("confirm_password", "")
+                current_password = request.form.get("current_password", "")
+
+                # Check if user input all information and if it matches
+                if not password:
+                    return error("must provide password", 400)
+                elif not confirmation:
+                    return error("must provide confirmation", 400)
+                elif not current_password:
+                    return error("must provide current password", 400)
+                elif password != confirmation:
+                    return error("password and confirmation must match", 400)
+                else: 
+                    # Get old password from database
+                    cur.execute("SELECT hash FROM users WHERE id = ?", (user_id, ))
+                    old_password = cur.fetchone()
+                    
+                    if not check_password_hash(old_password["hash"], current_password):
+                        return error("old password doesn't match", 400)
+                    else:
+                        # Generate hash for new password and update database
+                        password = generate_password_hash(password)
+                        cur.execute("UPDATE users SET hash = ? WHERE id = ?", (password, user_id, ))
+                        con.commit()
+
+            elif action == "delete_library":
+                return
+            elif action == "delete_account":
+                return
 
     return render_template("profile.html", current_steam_id=current_steam_id)
