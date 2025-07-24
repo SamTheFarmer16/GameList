@@ -137,6 +137,25 @@ def index():
             gamelist = cur.fetchall()
 
             return render_template("index.html", gamelist=gamelist)
+    
+        if request.method ==  "POST":
+            action = request.form.get("action")
+
+            # Adds new game to listing. Require Title and Platform
+            if action == "add":
+                return
+            
+            # Change information for game already in table
+            elif action == "update":
+                return
+            
+            # Delete single game from list
+            elif action == "delete":
+                return
+            
+            # Undo delete
+            elif action == "undo":
+                return
 
 @app.route("/profile", methods=["GET", "POST"])
 @login_required
@@ -302,7 +321,7 @@ def profile():
                 con.commit()
                 
                 session.clear()
-                
+
                 return redirect("/register")
 
     return render_template("profile.html", current_steam_id=current_steam_id)
