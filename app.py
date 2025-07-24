@@ -174,6 +174,8 @@ def profile():
                         # Add new games to list and update current total count
                         library_update(steam_id64, user_id)
 
+                        return redirect("/")
+
                 elif action == "update":
                     if steam_id64 == current_steam_id:
                         return error("SteamID unchanged", 400)
@@ -181,11 +183,13 @@ def profile():
                         # update SteamID
                         cur.execute("UPDATE users SET steam_id = ?", (steam_id64, ))
                         # Delist games the user currently has from steam and add date
-                        cur.execute("UPDATE gamelist SET listed = ?, delist_date = ? WHERE user_id = ? AND platform = ?", (0, today, user_id, "Steam" ))
+                        cur.execute("UPDATE gamelist SET listed = ?, delist_date = ? WHERE user_id = ? AND platform = ?", (0, today, user_id, "Steam", ))
                         con.commit()
 
                         # Add new games to list and update current total count
                         library_update(steam_id64, user_id)
+
+                        return redirect("/")
 
                 elif action == "undo":
 
@@ -228,6 +232,7 @@ def profile():
                                 END
                     """, game_data)
                     con.commit()
+                    
 
                     # Delist games that have the old steamid and add date
                     cur.execute("UPDATE gamelist SET listed = ?, delist_date = ? WHERE user_id = ? AND platform = ? AND steam_id = ?", (0, today, user_id, "Steam", current_steam_id, ))
@@ -244,6 +249,8 @@ def profile():
                     # Update current steam_id
                     cur.execute("UPDATE users SET steam_id = ? WHERE id = ?", (steam_id64, user_id, ))
                     con.commit()
+
+                    return redirect("/")
 
             elif action == "change_password":
                 
@@ -274,8 +281,28 @@ def profile():
                         con.commit()
 
             elif action == "delete_library":
-                return
+
+                # Delist all games from users library
+                cur.execute("UPDATE gamelist SET listed = ?, delist_date = ? WHERE user_id = ?", (0, today, user_id, ))
+                con.commit()
+
+                return redirect("/")
+
+            elif action == "undo_delete_library":
+                # Relist all delisted games in the users library
+                cur.execute("UPDATE gamelist SET listed = ?, delist_date = ? WHERE user_id = ?", (1, None, user_id, ))
+                con.commit()
+
+                return redirect("/")
+
             elif action == "delete_account":
-                return
+                # Delete users game library and account
+                cur.execute("DELETE FROM gamelist WHERE user_id = ?", (user_id, ))
+                cur.execute("DELETE FROM users WHERE id = ?", (user_id, ))
+                con.commit()
+                
+                session.clear()
+                
+                return redirect("/register")
 
     return render_template("profile.html", current_steam_id=current_steam_id)

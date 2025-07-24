@@ -60,7 +60,9 @@
     <form action="/profile" method="POST" onsubmit="return confirm('Are you sure you want to delete game data? After 30 days they will be fully removed');">
         <button class="btn-warning" type="submit" name="action" value="delete_library">Delete Game Library</button>
     </form>
-
+    <form action="/profile" method="POST">
+        <button class="btn" type="submit" name="action" value="undo_delete_library">Undo</button>
+    </form>
     <!-- Delete account and game data -->
     <form action="/profile" method="POST" onsubmit="return confirm('Are you sure you want to delete your account? You will not be able to undo this action');">
         <button class="btn-danger" type="submit" name="action" value="delete_account">Delete Account</button>
