@@ -4,7 +4,7 @@ import sys
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import date
-from flask import Flask, flash, redirect, render_template, request, session
+from flask import Flask, flash, redirect, render_template, request, session, jsonify
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -133,29 +133,77 @@ def index():
             user_id = session["user_id"]
 
             # Fetch current users game library
-            cur.execute("SELECT appid, icon_img, gamename, platform, status, multiplayer, coop, genre, playtime, length FROM gamelist WHERE user_id = ? AND listed = ?", (user_id, 1, ))
+            cur.execute("SELECT id, appid, icon_img, gamename, platform, status, multiplayer, coop, genre, playtime, length FROM gamelist WHERE user_id = ? AND listed = ?", (user_id, 1, ))
             gamelist = cur.fetchall()
 
             return render_template("index.html", gamelist=gamelist)
-    
-        if request.method ==  "POST":
-            action = request.form.get("action")
+        
+@app.route("/games/update", methods=["POST"])
+@login_required
+def update_game():
+    data = request.get_json()
+    user_id = session["user_id"]
 
-            # Adds new game to listing. Require Title and Platform
-            if action == "add":
-                return
-            
-            # Change information for game already in table
-            elif action == "update":
-                return
-            
-            # Delete single game from list
-            elif action == "delete":
-                return
-            
-            # Undo delete
-            elif action == "undo":
-                return
+    with sqlite3.connect("gamelist.db") as con:
+        cur = con.cursor()
+        cur.execute("""
+            UPDATE gamelist SET
+                gamename = ?, platform = ?, status = ?, multiplayer = ?, coop = ?, genre = ?, playtime = ?, length = ?
+                    WHERE user_id = ? AND id = ?
+        """, (
+            data["title"], data["platform"], data["status"],
+            data["multiplayer"], data["coop"], data["genre"],
+            data["playtime"], data["length"],
+            user_id, data["id"]
+        ))
+        con.commit()
+
+    return jsonify(success=True)
+
+@app.route("/games/delete", methods=["POST"])
+@login_required
+def delete_game():
+    data = request.get_json()
+    user_id = session["user_id"]
+
+    with sqlite3.connect("gamelist.db") as con:
+        cur = con.cursor()
+        cur.execute("DELETE FROM gamelist WHERE user_id = ? AND id = ?", (user_id, data["id"]))
+        con.commit()
+
+    return jsonify(success=True)
+
+@app.route("/games/add", methods=["POST"])
+@login_required
+def add_game():
+    data = request.get_json()
+    user_id = session["user_id"]
+
+    if not data["title"] or not data["platform"]:
+        return jsonify(success=False, error="Missing title or platform"), 400
+
+    with sqlite3.connect("gamelist.db") as con:
+        cur = con.cursor()
+        cur.execute("""
+            INSERT INTO gamelist (
+                user_id, gamename, platform, status,
+                multiplayer, coop, genre, playtime, length, listed
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+        """, (
+            user_id,
+            data["title"],
+            data["platform"],
+            data.get("status", ""),
+            data.get("multiplayer", 0),
+            data.get("coop", 0),
+            data.get("genre", ""),
+            data.get("playtime", 0),
+            data.get("length", 0)
+        ))
+        con.commit()
+
+    return jsonify(success=True)
 
 @app.route("/profile", methods=["GET", "POST"])
 @login_required

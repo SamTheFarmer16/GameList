@@ -5,6 +5,7 @@
 {% endblock %}
 
 {% block main %}
+<button id="add-game-btn">+ Add Game</button>
 <table>
     <thead>
         <tr>
@@ -19,21 +20,149 @@
             <th>Length</th>
         </tr>
     </thead>
-    <tbody>
-        {% for game in gamelist %}
-        <tr>
-            <td><img src=http://media.steampowered.com/steamcommunity/public/images/apps/{{ game.appid }}/{{ game.icon_img }}.jpg></td>
-            <td>{{ game.gamename }}</td>
-            <td>{{ game.platform }}</td>
-            <td>{{ game.status }}</td>
-            <td>{{ game.multiplayer }}</td>
-            <td>{{ game.coop }}</td>
-            <td>{{ game.genre }}</td>
-            <td>{{ game.playtime }}</td>
-            <td>{{ game.length }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
+<tbody>
+    {% for game in gamelist %}
+    <tr data-id="{{ game.id }}">
+        <td><img src="http://media.steampowered.com/steamcommunity/public/images/apps/{{ game.appid }}/{{ game.icon_img }}.jpg" height="32"></td>
+
+        <td><input type="text" class="input-title" value="{{ game.gamename }}"></td>
+        <td><input type="text" class="input-platform" value="{{ game.platform }}"></td>
+        <td><input type="text" class="input-status" value="{{ game.status }}"></td>
+        <td><input type="checkbox" class="input-multiplayer" {% if game.multiplayer %}checked{% endif %}></td>
+        <td><input type="checkbox" class="input-coop" {% if game.coop %}checked{% endif %}></td>
+        <td><input type="text" class="input-genre" value="{{ game.genre }}"></td>
+        <td><input type="number" class="input-playtime" value="{{ game.playtime }}"></td>
+        <td><input type="number" class="input-length" value="{{ game.length }}"></td>
+
+        <td>
+            <button class="save-btn">Save</button>
+            <button class="delete-btn">Delete</button>
+        </td>
+    </tr>
+    {% endfor %}
+</tbody>
+
 </table>
+
+<script>
+document.addEventListener("click", async (e) => {
+    const row = e.target.closest("tr");
+    if (!row) return;
+
+    const id = row.dataset.id;
+
+    if (e.target.classList.contains("save-btn")) {
+        const data = {
+            id,
+            title: row.querySelector(".input-title").value,
+            platform: row.querySelector(".input-platform").value,
+            status: row.querySelector(".input-status").value,
+            multiplayer: row.querySelector(".input-multiplayer").checked ? 1 : 0,
+            coop: row.querySelector(".input-coop").checked ? 1 : 0,
+            genre: row.querySelector(".input-genre").value,
+            playtime: row.querySelector(".input-playtime").value,
+            length: row.querySelector(".input-length").value,
+        };
+
+        const res = await fetch("/games/update", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+        });
+
+        const result = await res.json();
+        if (result.success) {
+            alert("Saved!");
+        } else {
+            alert("Failed: " + result.error);
+        }
+    }
+
+    if (e.target.classList.contains("delete-btn")) {
+        const res = await fetch("/games/delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id }),
+        });
+
+        const result = await res.json();
+        if (result.success) {
+            row.remove(); // remove row from DOM
+        } else {
+            alert("Failed to delete: " + result.error);
+        }
+    }
+});
+
+document.getElementById("add-game-btn").addEventListener("click", () => {
+    const tbody = document.querySelector("table tbody");
+
+    const newRow = document.createElement("tr");
+    newRow.classList.add("new-game-row");
+
+    newRow.innerHTML = `
+        <td></td>
+        <td><input type="text" class="input-title" placeholder="Game Name" required></td>
+        <td><input type="text" class="input-platform" placeholder="Platform" required></td>
+        <td><input type="text" class="input-status"></td>
+        <td><input type="checkbox" class="input-multiplayer"></td>
+        <td><input type="checkbox" class="input-coop"></td>
+        <td><input type="text" class="input-genre"></td>
+        <td><input type="number" class="input-playtime" value="0"></td>
+        <td><input type="number" class="input-length" value="0"></td>
+        <td>
+            <button class="save-new-btn">Save</button>
+            <button class="cancel-new-btn">Cancel</button>
+        </td>
+    `;
+
+    tbody.prepend(newRow);
+});
+
+// Save new game
+document.addEventListener("click", async (e) => {
+    if (e.target.classList.contains("save-new-btn")) {
+        const row = e.target.closest("tr");
+
+        const title = row.querySelector(".input-title").value.trim();
+        const platform = row.querySelector(".input-platform").value.trim();
+
+        if (!title || !platform) {
+            alert("Game name and platform are required.");
+            return;
+        }
+
+        const data = {
+            title,
+            platform,
+            status: row.querySelector(".input-status").value,
+            multiplayer: row.querySelector(".input-multiplayer").checked ? 1 : 0,
+            coop: row.querySelector(".input-coop").checked ? 1 : 0,
+            genre: row.querySelector(".input-genre").value,
+            playtime: row.querySelector(".input-playtime").value || 0,
+            length: row.querySelector(".input-length").value || 0
+        };
+
+        const res = await fetch("/games/add", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+        if (result.success) {
+            // Optional: reload page or fetch new data
+            location.reload(); // easiest option
+        } else {
+            alert("Failed to add game: " + result.error);
+        }
+    }
+
+    if (e.target.classList.contains("cancel-new-btn")) {
+        e.target.closest("tr").remove();
+    }
+});
+
+</script>
 
 {% endblock %}
