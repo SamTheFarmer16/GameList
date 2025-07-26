@@ -11,9 +11,28 @@ load_dotenv("setup.env")
 STEAM_API_KEY = os.getenv("STEAM_API_KEY")
 
 def error(message, code=400):
-    """Render message as an error to user."""
+    """Render message as an apology to user."""
 
-    return render_template("error.hmtl", message, code)
+    def escape(s):
+        """
+        Escape special characters.
+
+        https://github.com/jacebrowning/memegen#special-characters
+        """
+        for old, new in [
+            ("-", "--"),
+            (" ", "-"),
+            ("_", "__"),
+            ("?", "~q"),
+            ("%", "~p"),
+            ("#", "~h"),
+            ("/", "~s"),
+            ('"', "''"),
+        ]:
+            s = s.replace(old, new)
+        return s
+
+    return render_template("apology.html", top=code, bottom=escape(message)), code
 
 def is_valid_steamid64(steamid64):
     """Checks if steamid64 is valid."""
