@@ -10,14 +10,14 @@
     <thead>
         <tr>
             <th>Icon</th>
-            <th>Name</th>
-            <th>Platform</th>
-            <th>Status</th>
-            <th>Multiplayer?</th>
-            <th>Coop?</th>
-            <th>Genre</th>
-            <th>Playtime</th>
-            <th>Length</th>
+            <th class="sortable" data-key="title">Name</th>
+            <th class="sortable" data-key="platform">Platform</th>
+            <th class="sortable" data-key="status">Status</th>
+            <th class="sortable" data-key="multiplayer">Multiplayer?</th>
+            <th class="sortable" data-key="coop">Coop?</th>
+            <th class="sortable" data-key="genre">Genre</th>
+            <th class="sortable" data-key="playtime">Playtime</th>
+            <th class="sortable" data-key="length">Length</th>
         </tr>
     </thead>
 <tbody>
@@ -44,125 +44,6 @@
 
 </table>
 
-<script>
-document.addEventListener("click", async (e) => {
-    const row = e.target.closest("tr");
-    if (!row) return;
-
-    const id = row.dataset.id;
-
-    if (e.target.classList.contains("save-btn")) {
-        const data = {
-            id,
-            title: row.querySelector(".input-title").value,
-            platform: row.querySelector(".input-platform").value,
-            status: row.querySelector(".input-status").value,
-            multiplayer: row.querySelector(".input-multiplayer").checked ? 1 : 0,
-            coop: row.querySelector(".input-coop").checked ? 1 : 0,
-            genre: row.querySelector(".input-genre").value,
-            playtime: row.querySelector(".input-playtime").value,
-            length: row.querySelector(".input-length").value,
-        };
-
-        const res = await fetch("/games/update", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data),
-        });
-
-        const result = await res.json();
-        if (result.success) {
-            alert("Saved!");
-        } else {
-            alert("Failed: " + result.error);
-        }
-    }
-
-    if (e.target.classList.contains("delete-btn")) {
-        const res = await fetch("/games/delete", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id }),
-        });
-
-        const result = await res.json();
-        if (result.success) {
-            row.remove(); // remove row from DOM
-        } else {
-            alert("Failed to delete: " + result.error);
-        }
-    }
-});
-
-document.getElementById("add-game-btn").addEventListener("click", () => {
-    const tbody = document.querySelector("table tbody");
-
-    const newRow = document.createElement("tr");
-    newRow.classList.add("new-game-row");
-
-    newRow.innerHTML = `
-        <td></td>
-        <td><input type="text" class="input-title" placeholder="Game Name" required></td>
-        <td><input type="text" class="input-platform" placeholder="Platform" required></td>
-        <td><input type="text" class="input-status"></td>
-        <td><input type="checkbox" class="input-multiplayer"></td>
-        <td><input type="checkbox" class="input-coop"></td>
-        <td><input type="text" class="input-genre"></td>
-        <td><input type="number" class="input-playtime" value="0"></td>
-        <td><input type="number" class="input-length" value="0"></td>
-        <td>
-            <button class="save-new-btn">Save</button>
-            <button class="cancel-new-btn">Cancel</button>
-        </td>
-    `;
-
-    tbody.prepend(newRow);
-});
-
-// Save new game
-document.addEventListener("click", async (e) => {
-    if (e.target.classList.contains("save-new-btn")) {
-        const row = e.target.closest("tr");
-
-        const title = row.querySelector(".input-title").value.trim();
-        const platform = row.querySelector(".input-platform").value.trim();
-
-        if (!title || !platform) {
-            alert("Game name and platform are required.");
-            return;
-        }
-
-        const data = {
-            title,
-            platform,
-            status: row.querySelector(".input-status").value,
-            multiplayer: row.querySelector(".input-multiplayer").checked ? 1 : 0,
-            coop: row.querySelector(".input-coop").checked ? 1 : 0,
-            genre: row.querySelector(".input-genre").value,
-            playtime: row.querySelector(".input-playtime").value || 0,
-            length: row.querySelector(".input-length").value || 0
-        };
-
-        const res = await fetch("/games/add", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data)
-        });
-
-        const result = await res.json();
-        if (result.success) {
-            // Optional: reload page or fetch new data
-            location.reload(); // easiest option
-        } else {
-            alert("Failed to add game: " + result.error);
-        }
-    }
-
-    if (e.target.classList.contains("cancel-new-btn")) {
-        e.target.closest("tr").remove();
-    }
-});
-
-</script>
+<script src="{{ url_for('static', filename='gamelist.js') }}"></script>
 
 {% endblock %}
