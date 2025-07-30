@@ -1,10 +1,8 @@
-import os
 import sqlite3
-import sys
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import date
-from flask import Flask, flash, redirect, render_template, request, session, jsonify
+from flask import Flask, redirect, render_template, request, session, jsonify
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -141,11 +139,15 @@ def index():
 @app.route("/games/update", methods=["POST"])
 @login_required
 def update_game():
+    """Updates line that is being edited"""
+    
     data = request.get_json()
     user_id = session["user_id"]
 
     with sqlite3.connect("gamelist.db") as con:
         cur = con.cursor()
+
+        # Update current game selected with new data input
         cur.execute("""
             UPDATE gamelist SET
                 gamename = ?, platform = ?, status = ?, multiplayer = ?, coop = ?, genre = ?, playtime = ?, length = ?
@@ -155,7 +157,7 @@ def update_game():
             data["multiplayer"], data["coop"], data["genre"],
             data["playtime"], data["length"],
             user_id, data["id"]
-        ))
+            ))
         con.commit()
 
     return jsonify(success=True)
@@ -163,6 +165,8 @@ def update_game():
 @app.route("/games/delete", methods=["POST"])
 @login_required
 def delete_game():
+    """Delete game from list"""
+
     data = request.get_json()
     user_id = session["user_id"]
 
@@ -176,14 +180,19 @@ def delete_game():
 @app.route("/games/add", methods=["POST"])
 @login_required
 def add_game():
+    """Add new game to list"""
+
     data = request.get_json()
     user_id = session["user_id"]
 
+    # Check if title and platform are filed out
     if not data["title"] or not data["platform"]:
         return jsonify(success=False, error="Missing title or platform"), 400
 
     with sqlite3.connect("gamelist.db") as con:
         cur = con.cursor()
+
+        # Add game into database
         cur.execute("""
             INSERT INTO gamelist (
                 user_id, gamename, platform, status,
